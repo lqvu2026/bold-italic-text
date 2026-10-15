@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bold Italic Text</title>
+<meta name="description" content="Make bold and italic text to paste into Facebook or LinkedIn posts. Vietnamese friendly.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bold Italic">
+<link rel="icon" type="image/png" href="bold-italic-text-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="bold-italic-text-icon.png">
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1c1e21; --muted: #65676b;
+    --line: #d8dadf; --accent: #0866ff; --accent-text: #fff; --chip: #e7f0ff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #18191a; --card: #242526; --text: #e4e6eb; --muted: #a8abb2;
+      --line: #3e4042; --accent: #4599ff; --accent-text: #0b1220; --chip: #263a57;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px; padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    background: var(--bg); color: var(--text);
+    font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 4px 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 16px; font-size: .95rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 14px; }
+  label.h { display: block; font-weight: 600; margin-bottom: 8px; }
+  textarea, .output {
+    width: 100%; min-height: 150px; border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px; font: inherit; background: var(--bg); color: var(--text); resize: vertical;
+  }
+  .output { white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere; min-height: 150px; }
+  .output.empty { color: var(--muted); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 0; }
+  button {
+    font: inherit; font-weight: 600; border: 1px solid var(--line); background: var(--card);
+    color: var(--text); border-radius: 10px; padding: 10px 14px; cursor: pointer; min-height: 44px;
+  }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  button.on { background: var(--chip); border-color: var(--accent); }
+  .tools button { flex: 1 1 0; }
+  .seg { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+  .seg span { color: var(--muted); font-size: .9rem; }
+  .hint { color: var(--muted); font-size: .85rem; margin: 8px 0 0; }
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+    background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 999px;
+    font-size: .9rem; opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Bold Italic Text</h1>
+  <p class="sub">Type your post, style the parts you want, then copy it into Facebook or LinkedIn.</p>
+
+  <section class="card">
+    <label class="h" for="input">Your text</label>
+    <textarea id="input" placeholder="Type or paste here. Select some words, then tap Bold or Italic." autocapitalize="sentences"></textarea>
+
+    <div class="row tools">
+      <button id="btnBold" type="button"><b>Bold</b></button>
+      <button id="btnItalic" type="button"><i>Italic</i></button>
+      <button id="btnBoth" type="button"><b><i>Both</i></b></button>
+    </div>
+
+    <div class="seg">
+      <span>Font:</span>
+      <button id="fontSans" type="button" class="on">Sans</button>
+      <button id="fontSerif" type="button">Serif</button>
+    </div>
+
+    <p class="hint">Tap a style with words selected to style just those words. With nothing selected, it styles the whole text. You can also type <code>**bold**</code>, <code>*italic*</code> or <code>***both***</code> yourself.</p>
+  </section>
+
+  <section class="card">
+    <label class="h">Result</label>
+    <div id="output" class="output empty" aria-live="polite">Your styled text appears here.</div>
+    <div class="row">
+      <button id="btnCopy" type="button" class="primary">Copy</button>
+      <button id="btnShare" type="button">Share</button>
+      <button id="btnDownload" type="button">Download</button>
+      <button id="btnClear" type="button">Clear</button>
+    </div>
+    <p class="hint">Styled letters are special Unicode characters, not real formatting. They work on Facebook and LinkedIn, but screen readers may read them poorly and they can't be searched as normal text, so use them for a few key words rather than whole posts. Vietnamese accents are kept. The letter đ has no styled version and stays plain.</p>
+  </section>
+</main>
+<div id="toast" class="toast" role="status"></div>
+
+<script>
+/* ---------- Pure logic (no DOM) ---------- */
+var STYLES = {
+  sansBold:       { upper: 0x1D5D4, lower: 0x1D5EE, digit: 0x1D7EC },
+  sansItalic:     { upper: 0x1D608, lower: 0x1D622, digit: null },
+  sansBoldItalic: { upper: 0x1D63C, lower: 0x1D656, digit: 0x1D7EC },
+  serifBold:      { upper: 0x1D400, lower: 0x1D41A, digit: 0x1D7CE },
+  serifItalic:    { upper: 0x1D434, lower: 0x1D44E, digit: null, exceptions: { h: 0x210E } },
+  serifBoldItalic:{ upper: 0x1D468, lower: 0x1D482, digit: 0x1D7CE }
+};
+
+function styleChar(ch, style) {
+  var s = STYLES[style], c = ch.charCodeAt(0);
+  if (s.exceptions && s.exceptions[ch]) return String.fromCodePoint(s.exceptions[ch]);
+  if (c >= 65 && c <= 90) return String.fromCodePoint(s.upper + (c - 65));
+  if (c >= 97 && c <= 122) return String.fromCodePoint(s.lower + (c - 97));
+  if (c >= 48 && c <= 57 && s.digit) return String.fromCodePoint(s.digit + (c - 48));
+  return ch;
+}
+
+function styleText(text, style) {
+  // NFD splits accented letters into base letter + combining mark, so the base
+  // letter can be styled and the accent stays attached (works for Vietnamese).
+  var out = '';
+  var chars = Array.from(text.normalize('NFD'));
+  for (var i = 0; i < chars.length; i++) out += styleChar(chars[i], style);
+  return out;
+}
+
+function render(input, font) {
+  var f = font === 'serif' ? 'serif' : 'sans';
+  var pattern = /\*\*\*([\s\S]+?)\*\*\*|\*\*([\s\S]+?)\*\*|\*([\s\S]+?)\*/g;
+  return input.replace(pattern, function (m, both, bold, italic) {
+    if (both !== undefined) return styleText(both, f + 'BoldItalic');
+    if (bold !== undefined) return styleText(bold, f + 'Bold');
+    return styleText(italic, f + 'Italic');
+  });
+}
+
+/* ---------- UI ---------- */
+if (typeof document !== 'undefined') {
+  var $ = function (id) { return document.getElementById(id); };
+  var input = $('input'), output = $('output'), toast = $('toast');
+  var font = 'sans', result = '';
+
+  try { font = localStorage.getItem('bi-font') === 'serif' ? 'serif' : 'sans'; } catch (e) {}
+
+  function showToast(msg) {
+    toast.textContent = msg; toast.classList.add('show');
+    clearTimeout(showToast.t);
+    showToast.t = setTimeout(function () { toast.classList.remove('show'); }, 1600);
+  }
+
+  function update() {
+    result = render(input.value, font);
+    if (result) { output.textContent = result; output.classList.remove('empty'); }
+    else { output.textContent = 'Your styled text appears here.'; output.classList.add('empty'); }
+    $('fontSans').classList.toggle('on', font === 'sans');
+    $('fontSerif').classList.toggle('on', font === 'serif');
+  }
+
+  function wrap(marker) {
+    var v = input.value, a = input.selectionStart, b = input.selectionEnd;
+    if (a === b) { a = 0; b = v.length; }          // nothing selected: whole text
+    if (a === b) return;                            // empty box
+    // keep spaces outside the markers so they match properly
+    var sel = v.slice(a, b), lead = sel.match(/^\s*/)[0], trail = sel.match(/\s*$/)[0];
+    var core = sel.slice(lead.length, sel.length - trail.length);
+    if (!core) return;
+    var wrapped = lead + marker + core + marker + trail;
+    input.value = v.slice(0, a) + wrapped + v.slice(b);
+    var end = a + wrapped.length;
+    input.focus(); input.setSelectionRange(end, end);
+    update();
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (res, rej) {
+      var t = document.createElement('textarea');
+      t.value = text; t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.appendChild(t); t.select();
+      try { document.execCommand('copy') ? res() : rej(); } catch (e) { rej(e); }
+      document.body.removeChild(t);
+    });
+  }
+
+  input.addEventListener('input', update);
+  $('btnBold').addEventListener('click', function () { wrap('**'); });
+  $('btnItalic').addEventListener('click', function () { wrap('*'); });
+  $('btnBoth').addEventListener('click', function () { wrap('***'); });
+  $('fontSans').addEventListener('click', function () { font = 'sans'; try { localStorage.setItem('bi-font', font); } catch (e) {} update(); });
+  $('fontSerif').addEventListener('click', function () { font = 'serif'; try { localStorage.setItem('bi-font', font); } catch (e) {} update(); });
+
+  $('btnCopy').addEventListener('click', function () {
+    if (!result) return showToast('Nothing to copy yet');
+    copyText(result).then(function () { showToast('Copied'); }, function () { showToast('Copy failed. Press and hold the result to copy.'); });
+  });
+  $('btnShare').addEventListener('click', function () {
+    if (!result) return showToast('Nothing to share yet');
+    if (navigator.share) navigator.share({ text: result }).catch(function () {});
+    else copyText(result).then(function () { showToast('Sharing not available. Copied instead'); });
+  });
+  $('btnDownload').addEventListener('click', function () {
+    if (!result) return showToast('Nothing to download yet');
+    var blob = new Blob([result], { type: 'text/plain;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'styled-text.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+  $('btnClear').addEventListener('click', function () { input.value = ''; update(); input.focus(); });
+
+  update();
+}
+</script>
+</body>
+</html>
