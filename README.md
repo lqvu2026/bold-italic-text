@@ -1,6 +1,6 @@
 # Bold Italic Text
 
-Make bold and italic text to paste into Facebook or LinkedIn posts. Vietnamese friendly.
+Make bold and italic text to paste into Facebook or LinkedIn posts. Vietnamese- friendly.
 
 Type your text, style the words you want, and copy.
 
