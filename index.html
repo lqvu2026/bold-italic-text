@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bold Italic Text</title>
-<meta name="description" content="Make bold and italic text to paste into Facebook or LinkedIn posts. Vietnamese friendly.">
+<meta name="description" content="Make bold and italic text to paste into Facebook or LinkedIn posts. Vietnamese-friendly.">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Bold Italic">
@@ -90,7 +90,7 @@
       <button id="btnDownload" type="button">Download</button>
       <button id="btnClear" type="button">Clear</button>
     </div>
-    <p class="hint">Styled letters are special Unicode characters, not real formatting. They work on Facebook and LinkedIn, but screen readers may read them poorly and they can't be searched as normal text, so use them for a few key words rather than whole posts. Vietnamese accents are kept. The letter đ has no styled version and stays plain.</p>
+    <p class="hint">Styled letters are special Unicode characters, not real formatting. They work on Facebook and LinkedIn, but screen readers may read them poorly and they can't be searched as normal text, so use them for a few key words rather than whole posts. Vietnamese works, but capitals that carry a mark (like Ô, Ư, Ạ) and the letters Đ and đ stay in normal type, because Unicode has no styled version that displays well.</p>
   </section>
 </main>
 <div id="toast" class="toast" role="status"></div>
@@ -116,16 +116,27 @@ function styleChar(ch, style) {
 }
 
 function styleText(text, style) {
-  // NFD splits accented letters into base letter + combining mark, so the base
-  // letter can be styled and the accent stays attached (works for Vietnamese).
+  // Plain A-Z letters are styled. For accented letters (Vietnamese):
+  //  - lowercase letters on a plain a-z base get the styled base + the accent mark
+  //  - capitals with accents, and letters like Ư Ơ Đ ư ơ đ, stay as normal
+  //    precomposed letters, because accent marks on styled capitals display badly
+  //    on phones and Unicode has no styled versions of them.
   var out = '';
-  var chars = Array.from(text.normalize('NFD'));
-  for (var i = 0; i < chars.length; i++) out += styleChar(chars[i], style);
+  var chars = Array.from(text.normalize('NFC'));
+  for (var i = 0; i < chars.length; i++) {
+    var c = chars[i];
+    var d = c.normalize('NFD');
+    if (d.length === c.length) { out += styleChar(c, style); continue; }
+    var base = d.charAt(0);
+    if (base >= 'a' && base <= 'z') out += styleChar(base, style) + d.slice(1);
+    else out += c;
+  }
   return out;
 }
 
 function render(input, font) {
   var f = font === 'serif' ? 'serif' : 'sans';
+  input = input.replace(/\*{4,}/g, '***'); // pressing a style twice shouldn't break it
   var pattern = /\*\*\*([\s\S]+?)\*\*\*|\*\*([\s\S]+?)\*\*|\*([\s\S]+?)\*/g;
   return input.replace(pattern, function (m, both, bold, italic) {
     if (both !== undefined) return styleText(both, f + 'BoldItalic');
